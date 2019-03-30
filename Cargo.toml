@@ -1,0 +1,21 @@
+[package]
+name = "grpc-streaming-test"
+version = "0.1.0"
+authors = ["Jesse Grosjean <jesse@hogbaysoftware.com>"]
+edition = "2018"
+
+[dependencies]
+grpcio = { version = "0.4", default-features = false, features = ["protobuf-codec"] }
+protobuf = "2.3.0"
+futures = "^0.1.15"
+
+[build-dependencies]
+protoc-grpcio = "1.0.1"
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+
+[[bin]]
+name = "server"
+path = "src/server.rs"

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message StreamRequest {
+  uint64 client_id = 1;
+}
+
+message StreamItem {
+  uint64 item_id = 1;
+}
+
+service StreamService {
+  rpc stream(StreamRequest) returns (stream StreamItem);
+}
