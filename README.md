@@ -1,5 +1,7 @@
 This repository contains a [grpc-rs](https://github.com/pingcap/grpc-rs) server
-and two clients. To build:
+and two clients.
+
+To build:
 
 ```
 cargo build
@@ -29,10 +31,13 @@ difference being that `client_case_1` calls the `stream_case_1` rpc while
 `client_case_2` calls the `stream_case_2` rpc.
 
 Each client reads the first 100 items from the stream and then sleeps for 10
-seconds before quitting. The intention is that the server stops sending items
-soon after the client has received it's 100 items. The reason for the 10 second
-sleep when the server actually stops sending items... the server seems to always
-stop "right away" if the client process exists.
+seconds before quitting. The intention is that the server stops generating and
+sending items soon after the client has received it's 100 items.
+
+The reason for the 10 second sleep is because the server always stops right away
+(the good behavior that I want) when the client process exists. On the other
+hand if the client process doesn't exit sometimes the server keeps generating items
+even though the client has finished with the steam.
 
 To run a client 1:
 
@@ -57,8 +62,8 @@ ends up working to generate over 200,000 items each time.
 
 Note that this isn't always the case. Sometimes (especially just after
 restarting the server) the server will stop generating items pretty quickly
-after the client has it's first 100. That that isn't the normal behavior that I
-see.
+after the client has it's first 100. This is what I would want, but isn't the
+normal behavior.
 
 ## Case 2 Problems
 
