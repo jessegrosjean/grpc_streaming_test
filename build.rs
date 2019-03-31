@@ -3,9 +3,9 @@ use std::env;
 
 fn main() {
 	protoc_grpcio::compile_grpc_protos(
-		&["proto/test.proto"],
+		&["proto/api.proto"],
 		&["proto"],
-		&"src",
+		&"src/api",
 		None,
 	)
 	.expect("Failed to compile gRPC definitions!");

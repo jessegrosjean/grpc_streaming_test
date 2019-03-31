@@ -1,110 +1,109 @@
-mod test;
-mod test_grpc;
+mod api;
 
+use api::api::{StreamItem, StreamRequest};
+use api::api_grpc;
 use futures::future::Future;
 use futures::stream::Stream;
 use futures::sync::mpsc::*;
 use futures::sync::oneshot;
 use futures::*;
-use grpcio::{EnvBuilder, RpcContext, ServerBuilder, ServerStreamingSink, WriteFlags};
+use grpcio::{
+  Environment, Error, RpcContext, RpcStatus, ServerBuilder, ServerStreamingSink, WriteFlags,
+};
 use std::io::Read;
 use std::sync::Arc;
 use std::{io, thread};
-use test::{StreamItem, StreamRequest};
 
 #[derive(Clone)]
-pub struct StreamService {}
+pub struct StreamingExampleService {}
 
-fn method_1(ctx: RpcContext, req: StreamRequest, sink: ServerStreamingSink<StreamItem>) {
-  let client_id = req.get_client_id();
-  let (mut sender, receiver) = channel(10);
-  let receiver = receiver
-    .map(|e| (e, WriteFlags::default()))
-    .map_err(|_| grpcio::Error::RemoteStopped);
+impl api::api_grpc::StreamingExampleService for StreamingExampleService {
+  fn stream_case_1(
+    &mut self,
+    ctx: RpcContext,
+    _req: StreamRequest,
+    sink: ServerStreamingSink<StreamItem>,
+  ) {
+    let stream = ItemStream::new()
+      .map(|item| (item, WriteFlags::default()))
+      .map_err(|_| Error::RpcFailure(RpcStatus::ok()));
+    ctx.spawn(
+      sink
+        .send_all(stream)
+        .map(|_| println!("completed"))
+        .map_err(|e| println!("failed to reply: {:?}", e)),
+    );
+  }
 
-  ctx.spawn(
-    sink
-      .send_all(receiver)
-      .map(|_| {})
-      .map_err(|e| println!("failed to reply: {:?}", e)),
-  );
-
-  thread::spawn(move || {
-    let mut id = 0;
-    loop {
-      let mut item = StreamItem::new();
-      item.set_item_id(id);
-      println!("sending to client {}-{:?}", client_id, item);
-      id += 1;
-      match sender.try_send(item) {
-        Ok(()) => (),
-        Err(e) => {
-          if e.is_disconnected() {
-            return;
+  fn stream_case_2(
+    &mut self,
+    ctx: RpcContext,
+    _req: StreamRequest,
+    sink: ServerStreamingSink<StreamItem>,
+  ) {
+    let (mut sender, receiver) = channel(10);
+    let receiver = receiver
+      .map(|e| (e, WriteFlags::default()))
+      .map_err(|_| grpcio::Error::RemoteStopped);
+    ctx.spawn(
+      sink
+        .send_all(receiver)
+        .map(|_| println!("completed"))
+        .map_err(|e| println!("failed to reply: {:?}", e)),
+    );
+    thread::spawn(move || {
+      let mut id = 0;
+      loop {
+        let mut item = StreamItem::new();
+        item.set_item_id(id);
+        match sender.try_send(item) {
+          Ok(()) => {
+            println!("sent {}", id);
+            id += 1;
           }
-          if e.is_full() {
-          } else {
-            panic!("What case is this?")
+          Err(e) => {
+            if e.is_disconnected() {
+              println!("is_disconnected");
+              return;
+            } else if e.is_full() {
+              println!("is_full");
+            } else {
+              panic!("unexpected case!")
+            }
           }
         }
       }
-    }
-  });
-}
-
-fn method_2(ctx: RpcContext, req: StreamRequest, sink: ServerStreamingSink<StreamItem>) {
-  use futures::future::Future;
-  use futures::*;
-  use grpcio::{Error, WriteFlags};
-
-  let client_id = req.get_client_id();
-  struct ForeverIter {
-    client_id: u64,
-    item_id: u64,
-  };
-  impl Iterator for ForeverIter {
-    type Item = StreamItem;
-    fn next(&mut self) -> Option<Self::Item> {
-      let mut item = StreamItem::new();
-      item.set_item_id(self.item_id);
-      println!("creating to client {}-{:?}", self.client_id, item);
-      self.item_id += 1;
-      Some(item)
-    }
+    });
   }
-
-  let forever_iter = ForeverIter {
-    client_id,
-    item_id: 0,
-  };
-  let iter = forever_iter.map(|e| (e, WriteFlags::default()));
-  let f = sink
-    .send_all(stream::iter_ok::<_, Error>(iter))
-    .map(|_| {})
-    .map_err(|e| println!("failed to handle stream_test: {:?}", e));
-  ctx.spawn(f)
 }
 
-impl test_grpc::StreamService for StreamService {
-  fn stream(&mut self, ctx: RpcContext, req: StreamRequest, sink: ServerStreamingSink<StreamItem>) {
-    // With this method of streaming when I close the stream on the client then
-    // the ForeverIter iterator immeditaly stops being asked to yeiled items.
-    // This is the expected behavior.
+pub struct ItemStream {
+  curr: u64,
+}
 
-    //method_1(ctx, req, sink)
+impl ItemStream {
+  fn new() -> ItemStream {
+    ItemStream { curr: 1 }
+  }
+}
 
-    // With this method of streaming when I close the stream on the client the
-    // ForeverIter iterator keeps getting asked to yeiled items. This continues
-    // until the client process exits.
+impl Stream for ItemStream {
+  type Item = StreamItem;
+  type Error = ();
 
-    method_2(ctx, req, sink)
+  fn poll(&mut self) -> Poll<Option<StreamItem>, ()> {
+    println!("generating {}", self.curr);
+    let mut item = StreamItem::new();
+    item.set_item_id(self.curr);
+    self.curr += 1;
+    Ok(Async::Ready(Some(item)))
   }
 }
 
 fn main() {
-  let env = Arc::new(EnvBuilder::new().cq_count(1).build());
-  let instance = StreamService {};
-  let service = test_grpc::create_stream_service(instance);
+  let env = Arc::new(Environment::new(2));
+  let instance = StreamingExampleService {};
+  let service = api_grpc::create_streaming_example_service(instance);
   let mut server = ServerBuilder::new(env)
     .register_service(service)
     .bind("127.0.0.1", 50_051)

@@ -13,8 +13,12 @@ futures = "^0.1.15"
 protoc-grpcio = "1.0.1"
 
 [[bin]]
-name = "client"
-path = "src/client.rs"
+name = "client_case_1"
+path = "src/client_case_1.rs"
+
+[[bin]]
+name = "client_case_2"
+path = "src/client_case_2.rs"
 
 [[bin]]
 name = "server"

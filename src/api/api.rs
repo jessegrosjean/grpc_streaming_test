@@ -334,10 +334,11 @@ impl ::protobuf::reflect::ProtobufValue for StreamItem {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\ntest.proto\",\n\rStreamRequest\x12\x1b\n\tclient_id\x18\x01\x20\x01(\
+    \n\tapi.proto\",\n\rStreamRequest\x12\x1b\n\tclient_id\x18\x01\x20\x01(\
     \x04R\x08clientId\"%\n\nStreamItem\x12\x17\n\x07item_id\x18\x01\x20\x01(\
-    \x04R\x06itemId28\n\rStreamService\x12'\n\x06stream\x12\x0e.StreamReques\
-    t\x1a\x0b.StreamItem0\x01b\x06proto3\
+    \x04R\x06itemId2y\n\x17StreamingExampleService\x12.\n\rstream_case_1\x12\
+    \x0e.StreamRequest\x1a\x0b.StreamItem0\x01\x12.\n\rstream_case_2\x12\x0e\
+    .StreamRequest\x1a\x0b.StreamItem0\x01b\x06proto3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {
