@@ -1,4 +1,5 @@
 mod api;
+mod log_util;
 
 use api::api::{StreamItem, StreamRequest};
 use api::api_grpc;
@@ -45,12 +46,7 @@ impl api::api_grpc::StreamingExampleService for StreamingExampleService {
     let receiver = receiver
       .map(|e| (e, WriteFlags::default()))
       .map_err(|_| grpcio::Error::RemoteStopped);
-    ctx.spawn(
-      sink
-        .send_all(receiver)
-        .map(|_| println!("completed"))
-        .map_err(|e| println!("failed to reply: {:?}", e)),
-    );
+
     thread::spawn(move || {
       let mut id = 0;
       loop {
@@ -66,6 +62,11 @@ impl api::api_grpc::StreamingExampleService for StreamingExampleService {
               println!("is_disconnected");
               return;
             } else if e.is_full() {
+              // If I comment out this println then I get the bad behavior
+              // again. The server keeps sending stream even after client is
+              // done reading it. On the other hand when I DO enable this
+              // println then the server stops sending soon after the client is
+              // done. I'm not doing something right for sure!
               println!("is_full");
             } else {
               panic!("unexpected case!")
@@ -74,6 +75,13 @@ impl api::api_grpc::StreamingExampleService for StreamingExampleService {
         }
       }
     });
+
+    ctx.spawn(
+      sink
+        .send_all(receiver)
+        .map(|_| println!("completed"))
+        .map_err(|e| println!("failed to reply: {:?}", e)),
+    );
   }
 }
 
@@ -101,6 +109,9 @@ impl Stream for ItemStream {
 }
 
 fn main() {
+  env_logger::init();
+  grpcio::redirect_log();
+
   let env = Arc::new(Environment::new(2));
   let instance = StreamingExampleService {};
   let service = api_grpc::create_streaming_example_service(instance);

@@ -78,3 +78,7 @@ A second problem is that the server still generates more items then I would
 expect. Around 1000 for each call. This is surprising to me because the the
 channel that I'm writing into only has a buffer of 10 items. I don't quite
 understand why the server is still generating so many.
+
+**NOTE** I just figured out that case 2 good behavior was also dependent on a
+`println` in the code (see comment in code). If I comment that `println` out
+then I get bad behavior again. Yipes, I must be doing something pretty wrong!
